@@ -43,8 +43,9 @@ llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
 
 template = """
 You are a medical research explainer. 
-Summarize the following PubMed study conclusion in plain English.
-Include implications for chronic health.
+Summarize the following PubMed study conclusion in easy to understand English.
+Include implications for health & actionable solutions. 
+Be sure to include the primary author and year of the study. 
 
 Title: {title}
 Authors: {authors}
