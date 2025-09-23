@@ -45,7 +45,8 @@ template = """
 You are a medical research explainer. 
 Summarize the following PubMed study conclusion in easy to understand English.
 Include implications for health & actionable solutions. 
-Be sure to include the primary author and year of the study. 
+Be sure to include the primary author and year of the study.
+It is integral you mention how it is relevant to what the query term was. 
 
 Title: {title}
 Authors: {authors}
