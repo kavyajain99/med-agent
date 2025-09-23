@@ -27,8 +27,9 @@ from xml.etree import ElementTree
 
 def search_pubmed_conclusions(query, n=5):
     """
-    Search PubMed for a query and return top `n` relevant study conclusions,
-    including authors and year. Automatically fetches extra abstracts if needed.
+    Search PubMed for a query and return top `n` study conclusions,
+    including title, authors, and year. Automatically fetches extra abstracts
+    to ensure we always get n summaries.
     """
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
     fetch_multiplier = 3  # Fetch extra abstracts to ensure we get n relevant
@@ -51,7 +52,7 @@ def search_pubmed_conclusions(query, n=5):
     for article in root.findall(".//PubmedArticle"):
         title_el = article.find(".//ArticleTitle")
         abstract_el = article.find(".//Abstract/AbstractText")
-        journal_el = article.find(".//Journal/JournalIssue/PubDate/Year")
+        journal_year_el = article.find(".//Journal/JournalIssue/PubDate/Year")
         authors_el = article.findall(".//AuthorList/Author")
 
         if abstract_el is None or abstract_el.text is None:
@@ -64,7 +65,7 @@ def search_pubmed_conclusions(query, n=5):
             first = a.find("ForeName")
             if last is not None and first is not None:
                 authors.append(f"{first.text} {last.text}")
-        year = journal_el.text if journal_el is not None else "Unknown"
+        year = journal_year_el.text if journal_year_el is not None else "Unknown"
 
         studies.append({
             "title": title_el.text if title_el is not None else "No title",
@@ -76,5 +77,4 @@ def search_pubmed_conclusions(query, n=5):
         if len(studies) >= n:
             break
 
-    # If fewer than n studies, just return whatever we got
     return studies[:n]
