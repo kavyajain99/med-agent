@@ -25,38 +25,38 @@
 import requests
 from xml.etree import ElementTree
 
-def search_pubmed_conclusions(query, max_results=5):
+def search_pubmed(query, max_results=5):
     """
-    Search PubMed for a query and return only conclusions from abstracts.
-    If a conclusion section is not found, fallback to full abstract text.
+    Search PubMed for a query and return exactly `max_results` conclusions.
+    Fetches extra results if needed to fill the quota.
     """
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-
-    # Step 1: Search PubMed for IDs
-    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
+    fetch_limit = max_results * 3  # overfetch to increase chances
+    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={fetch_limit}&retmode=json"
     search_resp = requests.get(search_url).json()
-    ids = search_resp["esearchresult"]["idlist"]
+    ids = search_resp["esearchresult"].get("idlist", [])
 
     if not ids:
         return []
 
-    # Step 2: Fetch detailed records
     fetch_url = f"{base_url}efetch.fcgi?db=pubmed&id={','.join(ids)}&retmode=xml"
     fetch_resp = requests.get(fetch_url)
     root = ElementTree.fromstring(fetch_resp.content)
 
     conclusions = []
+    articles = root.findall(".//PubmedArticle")
 
-    # Extract labeled conclusions
-    for article in root.findall(".//AbstractText"):
-        label = article.attrib.get("Label", "").lower()
-        if label in ("conclusion", "conclusions") and article.text:
-            conclusions.append(article.text)
+    for article in articles:
+        conclusion_texts = [
+            elem.text.strip()
+            for elem in article.findall(".//AbstractText[@Label='CONCLUSIONS']")
+            if elem.text
+        ]
+        if conclusion_texts:
+            conclusions.append(" ".join(conclusion_texts))
 
-    # Fallback: if no labeled conclusion, use full abstract
-    if not conclusions:
-        for article in root.findall(".//AbstractText"):
-            if article.text:
-                conclusions.append(article.text)
+        # Stop once we’ve collected enough
+        if len(conclusions) >= max_results:
+            break
 
     return conclusions
