@@ -39,25 +39,29 @@ from langchain.chains import LLMChain
 
 load_dotenv()
 
-# Use GPT-3.5 for low-cost testing
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
 
-# Prompt now asks to summarize conclusions only
 template = """
 You are a medical research explainer. 
-Summarize the following PubMed conclusion in plain English.
-Highlight any implications for chronic health, and make it actionable and consise. 
-Emphasize information that is not common knowledge or mainstream, as readers are looking for new ideas and solutions.  
+Summarize the following PubMed study conclusion in plain English.
+Include implications for chronic health.
 
-Conclusion:
-{conclusion}
+Title: {title}
+Authors: {authors}
+Year: {year}
+Conclusion: {abstract}
 """
-prompt = PromptTemplate(input_variables=["conclusion"], template=template)
+prompt = PromptTemplate(input_variables=["title","authors","year","abstract"], template=template)
 summarizer_chain = LLMChain(llm=llm, prompt=prompt)
 
-def summarize_conclusions(conclusions):
+def summarize_conclusions(studies):
     """
-    Summarize a list of PubMed conclusions.
-    Returns a list of plain-English summaries focused on chronic health implications.
+    Summarize a list of study dictionaries.
+    Each study dict has 'title','authors','year','abstract'
     """
-    return [summarizer_chain.run(conclusion=c) for c in conclusions]
+    return [summarizer_chain.run(
+        title=st["title"],
+        authors=st["authors"],
+        year=st["year"],
+        abstract=st["abstract"]
+    ) for st in studies]

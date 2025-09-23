@@ -27,55 +27,55 @@ from xml.etree import ElementTree
 
 def search_pubmed_conclusions(query, n=5):
     """
-    Search PubMed for a query and return exactly `n` conclusions,
-    along with the first author and publication year.
+    Search PubMed for a query and return top `n` relevant study conclusions, 
+    including authors and year.
     """
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
     
-    # 1️⃣ Search for PubMed IDs
-    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={n*2}&retmode=json"
+    # Step 1: Search IDs
+    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={n*3}&retmode=json"
     search_resp = requests.get(search_url).json()
     ids = search_resp["esearchresult"]["idlist"]
-    
     if not ids:
-        return [{"author": "N/A", "year": "N/A", "conclusion": "No studies found. Try another query."}] * n
+        return []
     
-    # 2️⃣ Fetch full abstracts in XML
+    # Step 2: Fetch details
     fetch_url = f"{base_url}efetch.fcgi?db=pubmed&id={','.join(ids)}&retmode=xml"
     fetch_resp = requests.get(fetch_url)
     root = ElementTree.fromstring(fetch_resp.content)
-    
+
     studies = []
-    
     for article in root.findall(".//PubmedArticle"):
-        # Extract first author
-        author_elem = article.find(".//Author[1]/LastName")
-        first_author = author_elem.text if author_elem is not None else "Unknown"
+        # Extract title, abstract, authors, year
+        title_el = article.find(".//ArticleTitle")
+        abstract_el = article.find(".//Abstract/AbstractText")
+        journal_el = article.find(".//Journal/JournalIssue/PubDate/Year")
+        authors_el = article.findall(".//AuthorList/Author")
         
-        # Extract publication year
-        year_elem = article.find(".//PubDate/Year")
-        if year_elem is None:
-            # fallback if no Year in PubDate
-            medline_date = article.find(".//PubDate/MedlineDate")
-            pub_year = medline_date.text.split()[0] if medline_date is not None else "Unknown"
-        else:
-            pub_year = year_elem.text
-        
-        # Extract conclusion section
-        conc_texts = [t.text for t in article.findall(".//AbstractText[@Label='CONCLUSIONS']") if t.text]
-        if conc_texts:
-            conclusion = " ".join(conc_texts)
-        else:
-            # Fallback: last section of abstract
-            all_sections = [t.text for t in article.findall(".//AbstractText") if t.text]
-            conclusion = all_sections[-1] if all_sections else "No clear conclusion provided in this study."
-        
-        studies.append({"author": first_author, "year": pub_year, "conclusion": conclusion})
-    
-    # Ensure exactly n results
-    if len(studies) < n:
-        studies += [{"author": "N/A", "year": "N/A", "conclusion": "No conclusion available."}] * (n - len(studies))
-    else:
-        studies = studies[:n]
-    
+        # Skip if no abstract
+        if abstract_el is None or abstract_el.text is None:
+            continue
+
+        abstract_text = abstract_el.text
+        # Filter for relevance to query
+        if all(term.lower() in abstract_text.lower() for term in query.split()):
+            # Authors
+            authors = []
+            for a in authors_el:
+                last = a.find("LastName")
+                first = a.find("ForeName")
+                if last is not None and first is not None:
+                    authors.append(f"{first.text} {last.text}")
+            year = journal_el.text if journal_el is not None else "Unknown"
+            
+            studies.append({
+                "title": title_el.text if title_el is not None else "No title",
+                "abstract": abstract_text,
+                "authors": ", ".join(authors) if authors else "Unknown",
+                "year": year
+            })
+        # Stop if we reach n studies
+        if len(studies) >= n:
+            break
+
     return studies
