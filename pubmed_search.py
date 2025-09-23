@@ -25,7 +25,8 @@
 import requests
 from xml.etree import ElementTree
 
-def search_pubmed(query, max_results=5):
+def search_pubmed_conclusions(query, max_results=5):
+
     """
     Search PubMed for a query and return exactly `max_results` conclusions.
     Fetches extra results if needed to fill the quota.
