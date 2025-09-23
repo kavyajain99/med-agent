@@ -26,38 +26,29 @@ import requests
 from xml.etree import ElementTree
 
 def search_pubmed_conclusions(query, max_results=5):
-
     """
-    Search PubMed for a query and return exactly `max_results` conclusions.
-    Fetches extra results if needed to fill the quota.
+    Search PubMed for a query and return conclusions (or fallback text).
     """
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-    fetch_limit = max_results * 3  # overfetch to increase chances
-    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={fetch_limit}&retmode=json"
+    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax={max_results}&retmode=json"
     search_resp = requests.get(search_url).json()
-    ids = search_resp["esearchresult"].get("idlist", [])
-
-    if not ids:
-        return []
+    ids = search_resp["esearchresult"]["idlist"]
 
     fetch_url = f"{base_url}efetch.fcgi?db=pubmed&id={','.join(ids)}&retmode=xml"
     fetch_resp = requests.get(fetch_url)
     root = ElementTree.fromstring(fetch_resp.content)
 
     conclusions = []
-    articles = root.findall(".//PubmedArticle")
+    for article in root.findall(".//PubmedArticle"):
+        # First try to get explicit conclusions
+        conc_texts = [t.text for t in article.findall(".//AbstractText[@Label='CONCLUSIONS']") if t.text]
 
-    for article in articles:
-        conclusion_texts = [
-            elem.text.strip()
-            for elem in article.findall(".//AbstractText[@Label='CONCLUSIONS']")
-            if elem.text
-        ]
-        if conclusion_texts:
-            conclusions.append(" ".join(conclusion_texts))
-
-        # Stop once we’ve collected enough
-        if len(conclusions) >= max_results:
-            break
+        if conc_texts:
+            conclusions.append(" ".join(conc_texts))
+        else:
+            # fallback: take the last AbstractText if available
+            all_sections = [t.text for t in article.findall(".//AbstractText") if t.text]
+            if all_sections:
+                conclusions.append(all_sections[-1])  # last section ~ conclusions
 
     return conclusions
