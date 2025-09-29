@@ -40,6 +40,7 @@ st.title("🩺 Health Research Agent")
 st.write("Enter a health topic and get PubMed research conclusions summarized in plain English.")
 
 query = st.text_input("Search PubMed for:")
+advanced_query = st.text_input("Advanced/optional search query (e.g., more specific terms):")
 max_results = st.slider("Number of studies:", 1, 10, 5)
 
 if st.button("Summarize Research"):
@@ -47,7 +48,7 @@ if st.button("Summarize Research"):
         st.error("Please enter a search query.")
     else:
         with st.spinner("Fetching and summarizing..."):
-            conclusions = search_pubmed_conclusions(query, n=max_results)
+            conclusions = search_pubmed_conclusions(query, n=max_results, advanced_query=advanced_query)
             
             if not conclusions:
                 st.warning("No conclusions found. Try another query.")
