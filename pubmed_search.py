@@ -28,13 +28,10 @@ from xml.etree import ElementTree
 def search_pubmed_conclusions(query, n=5):
     """
     Search PubMed for a query and return top `n` study conclusions,
-    including title, authors, and year. Automatically fetches extra abstracts
-    to ensure we always get n summaries.
+    including pmid, title, authors, year, and abstract.
     """
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
     fetch_multiplier = 3  # Fetch extra abstracts to ensure we get n relevant
-
-    studies = []
     retmax = n * fetch_multiplier
 
     # Step 1: Search IDs
@@ -49,33 +46,50 @@ def search_pubmed_conclusions(query, n=5):
     fetch_resp = requests.get(fetch_url)
     root = ElementTree.fromstring(fetch_resp.content)
 
-    for article in root.findall(".//PubmedArticle"):
-        title_el = article.find(".//ArticleTitle")
-        abstract_el = article.find(".//Abstract/AbstractText")
-        journal_year_el = article.find(".//Journal/JournalIssue/PubDate/Year")
-        authors_el = article.findall(".//AuthorList/Author")
+    studies = []
 
+    for article in root.findall(".//PubmedArticle"):
+        # Extract PMID
+        pmid_el = article.find(".//PMID")
+        if pmid_el is None or pmid_el.text is None:
+            continue
+        pmid = pmid_el.text.strip()
+
+        # Extract title
+        title_el = article.find(".//ArticleTitle")
+        title = title_el.text.strip() if title_el is not None else "No title"
+
+        # Extract abstract
+        abstract_el = article.find(".//Abstract/AbstractText")
         if abstract_el is None or abstract_el.text is None:
             continue
+        abstract = abstract_el.text.strip()
 
-        # Extract authors
+        # Extract year
+        journal_year_el = article.find(".//Journal/JournalIssue/PubDate/Year")
+        year = journal_year_el.text if journal_year_el is not None else "Unknown"
+
+        # Extract authors (up to 3)
+        authors_el = article.findall(".//AuthorList/Author")
         authors = []
-        for a in authors_el:
+        for a in authors_el[:3]:
             last = a.find("LastName")
             first = a.find("ForeName")
             if last is not None and first is not None:
                 authors.append(f"{first.text} {last.text}")
-        year = journal_year_el.text if journal_year_el is not None else "Unknown"
+        authors_str = ", ".join(authors) if authors else "Unknown"
 
+        # Append study dict
         studies.append({
-        "pmid": pmid,   # <-- add this line
-        "title": title,
-        "authors": authors,
-        "year": year,
-        "abstract": abstract
+            "pmid": pmid,
+            "title": title,
+            "authors": authors_str,
+            "year": year,
+            "abstract": abstract
         })
 
         if len(studies) >= n:
             break
 
     return studies[:n]
+
