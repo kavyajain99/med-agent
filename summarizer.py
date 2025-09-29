@@ -31,6 +31,43 @@
 #     """
 #     return [summarizer_chain.run(abstract=ab) for ab in abstracts]
 
+# import os
+# from dotenv import load_dotenv
+# from langchain_openai import ChatOpenAI
+# from langchain.prompts import PromptTemplate
+# from langchain.chains import LLMChain
+
+# load_dotenv()
+
+# llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
+
+# template = """
+# You are a medical research explainer. 
+# Summarize the following PubMed study conclusion in easy to understand English.
+# Include implications for health & actionable solutions. 
+# Be sure to include the primary author and year of the study.
+# It is integral you mention how it is relevant to what the query term was. 
+
+# Title: {title}
+# Authors: {authors}
+# Year: {year}
+# Conclusion: {abstract}
+# """
+# prompt = PromptTemplate(input_variables=["title","authors","year","abstract"], template=template)
+# summarizer_chain = LLMChain(llm=llm, prompt=prompt)
+
+# def summarize_conclusions(studies):
+#     """
+#     Summarize a list of study dictionaries.
+#     Each study dict has 'title','authors','year','abstract'
+#     """
+#     return [summarizer_chain.run(
+#         title=st["title"],
+#         authors=st["authors"],
+#         year=st["year"],
+#         abstract=st["abstract"]
+#     ) for st in studies]
+
 import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -53,17 +90,31 @@ Authors: {authors}
 Year: {year}
 Conclusion: {abstract}
 """
-prompt = PromptTemplate(input_variables=["title","authors","year","abstract"], template=template)
+prompt = PromptTemplate(
+    input_variables=["title","authors","year","abstract"],
+    template=template
+)
 summarizer_chain = LLMChain(llm=llm, prompt=prompt)
 
 def summarize_conclusions(studies):
     """
     Summarize a list of study dictionaries.
-    Each study dict has 'title','authors','year','abstract'
+    Each study dict must have 'title','authors','year','abstract','pmid'.
     """
-    return [summarizer_chain.run(
-        title=st["title"],
-        authors=st["authors"],
-        year=st["year"],
-        abstract=st["abstract"]
-    ) for st in studies]
+    summaries = []
+    for st in studies:
+        summary = summarizer_chain.run(
+            title=st["title"],
+            authors=st["authors"],
+            year=st["year"],
+            abstract=st["abstract"]
+        )
+        
+        # 🔗 Add PubMed link
+        pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{st['pmid']}/"
+        linked_header = f"[**{st['title']}** ({st['authors']}, {st['year']})]({pubmed_url})"
+        
+        # Combine header + summary
+        summaries.append(f"{linked_header}\n\n{summary}")
+    
+    return summaries
