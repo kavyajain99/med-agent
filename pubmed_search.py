@@ -68,10 +68,11 @@ def search_pubmed_conclusions(query, n=5):
         year = journal_year_el.text if journal_year_el is not None else "Unknown"
 
         studies.append({
-            "title": title_el.text if title_el is not None else "No title",
-            "abstract": abstract_el.text,
-            "authors": ", ".join(authors) if authors else "Unknown",
-            "year": year
+        "pmid": pmid,   # <-- add this line
+        "title": title,
+        "authors": authors,
+        "year": year,
+        "abstract": abstract
         })
 
         if len(studies) >= n:
