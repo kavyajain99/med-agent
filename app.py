@@ -47,8 +47,11 @@ if st.button("Summarize Research"):
     if not query:
         st.error("Please enter a search query.")
     else:
+        # Combine queries if advanced query is provided
+        combined_query = f"{query} AND {advanced_query}" if advanced_query else query
+
         with st.spinner("Fetching and summarizing..."):
-            conclusions = search_pubmed_conclusions(query, n=max_results, advanced_query=advanced_query)
+            conclusions = search_pubmed_conclusions(combined_query, n=max_results)
             
             if not conclusions:
                 st.warning("No conclusions found. Try another query.")
