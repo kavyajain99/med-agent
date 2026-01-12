@@ -114,14 +114,15 @@ def summarize_conclusions(studies, query_term):
 # 5. Streamlit UI
 st.set_page_config(page_title="Health Research Agent", layout="wide")
 st.title("🩺 Health Research Agent")
-st.markdown("### *Decoding medical science into everyday language.*")
-st.write("Search the latest PubMed advancements and get research summaries in plain English.")
+st.markdown("### *Making medical innovation accessible to all.*")
+st.write("Search PubMed for specific topics and get actionable research summaries in plain English.")
+
 # Two-column layout for Search
 col1, col2 = st.columns(2)
 with col1:
     main_query = st.text_input("Primary Health Topic:", placeholder="e.g. Endometriosis")
 with col2:
-    adv_query = st.text_input("Advanced / Secondary Terms (Optional):", placeholder="e.g. Cannabis")
+    adv_query = st.text_input("(Optional) Advanced / Secondary Terms:", placeholder="e.g. Cannabis")
 
 max_results = st.slider("Number of studies:", 1, 10, 5)
 
@@ -132,11 +133,11 @@ if st.button("Summarize Research"):
         # Combine queries for PubMed if both are provided
         combined_query = f"{main_query} AND {adv_query}" if adv_query else main_query
         
-        with st.spinner(f"Searching for '{combined_query}'..."):
+        with st.spinner(f"I'm searching for '{combined_query}'..."):
             studies = search_pubmed_conclusions(combined_query, n=max_results)
             
             if not studies:
-                st.warning("No studies found. Try adjusting your terms.")
+                st.warning("No studies found :.....(. Try adjusting your terms.")
             else:
                 summaries = summarize_conclusions(studies, combined_query)
                 for s in summaries:
