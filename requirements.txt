@@ -1,7 +1,6 @@
 streamlit
 requests
 python-dotenv
-langchain>=0.1.0
+langchain
 langchain-openai
 langchain-community
-lxml
