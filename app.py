@@ -14,32 +14,30 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 
-# 2. PubMed Search Logic (Now extracts Authors and Year)
+# 2. PubMed Search Logic (Handles combined query)
 def search_pubmed_conclusions(query, n=5):
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    # Encode the combined query for the API
     q_encoded = quote(query)
     
-    # Step 1: Search IDs
     search_url = f"{base_url}esearch.fcgi?db=pubmed&term={q_encoded}&retmax={n}&retmode=json"
     try:
         search_resp = requests.get(search_url).json()
         ids = search_resp.get("esearchresult", {}).get("idlist", [])
         if not ids: return []
 
-        # Step 2: Fetch Details
         fetch_url = f"{base_url}efetch.fcgi?db=pubmed&id={','.join(ids)}&retmode=xml"
         fetch_resp = requests.get(fetch_url)
         root = ElementTree.fromstring(fetch_resp.content)
         
         studies = []
         for article in root.findall(".//PubmedArticle"):
-            # Extract basic info
             pmid = article.find(".//PMID").text if article.find(".//PMID") is not None else ""
             title = article.find(".//ArticleTitle").text if article.find(".//ArticleTitle") is not None else "No Title"
             
             # Extract Year
             year_el = article.find(".//Journal/JournalIssue/PubDate/Year")
-            year = year_el.text if year_el is not None else "Unknown Year"
+            year = year_el.text if year_el is not None else "N/A"
             
             # Extract Authors (First 3)
             authors_list = []
@@ -50,7 +48,7 @@ def search_pubmed_conclusions(query, n=5):
                     authors_list.append(f"{first.text} {last.text}")
             authors_str = ", ".join(authors_list) if authors_list else "Unknown Author"
 
-            # Extract Abstract
+            # Extract Abstract (Conclusion)
             abstract_text = ""
             for abs_part in article.findall(".//AbstractText"):
                 if abs_part.text:
@@ -71,8 +69,9 @@ def search_pubmed_conclusions(query, n=5):
 
 # 3. AI Setup with YOUR Specific Template
 if OPENAI_API_KEY:
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5) # Using your 0.5 temp
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
     
+    # Restored your original template structure
     template = """
     You are a medical research explainer. 
     Summarize the following PubMed study conclusion in easy to understand English.
@@ -92,14 +91,13 @@ if OPENAI_API_KEY:
         template=template
     )
     
-    # The modern "Chain"
+    # Modern LCEL Chain
     summarizer_chain = prompt | llm | StrOutputParser()
 
-# 4. The Summarization Helper (Like your original version)
+# 4. The Summarization Helper
 def summarize_conclusions(studies, query_term):
     summaries = []
     for st_dict in studies:
-        # Run the chain using .invoke
         summary = summarizer_chain.invoke({
             "title": st_dict["title"],
             "authors": st_dict["authors"],
@@ -108,35 +106,40 @@ def summarize_conclusions(studies, query_term):
             "query": query_term
         })
         
-        # Build the header with the PubMed link exactly like your example
         pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{st_dict['pmid']}/"
         linked_header = f"### [**{st_dict['title']}** ({st_dict['authors']}, {st_dict['year']})]({pubmed_url})"
-        
         summaries.append(f"{linked_header}\n\n{summary}")
     return summaries
 
 # 5. Streamlit UI
 st.set_page_config(page_title="Health Research Agent", layout="wide")
 st.title("🩺 Health Research Agent")
-st.write("Enter a health topic and get PubMed research summaries in plain English.")
 
-query = st.text_input("Search PubMed for:")
+# Two-column layout for Search
+col1, col2 = st.columns(2)
+with col1:
+    main_query = st.text_input("Primary Health Topic:", placeholder="e.g. Magnesium")
+with col2:
+    adv_query = st.text_input("Advanced / Secondary Terms (Optional):", placeholder="e.g. Sleep quality")
+
 max_results = st.slider("Number of studies:", 1, 10, 5)
 
 if st.button("Summarize Research"):
-    if not query:
-        st.error("Please enter a search query.")
+    if not main_query:
+        st.error("Please enter at least a primary health topic.")
     else:
-        with st.spinner("Fetching and summarizing..."):
-            studies = search_pubmed_conclusions(query, n=max_results)
+        # Combine queries for PubMed if both are provided
+        combined_query = f"{main_query} AND {adv_query}" if adv_query else main_query
+        
+        with st.spinner(f"Searching for '{combined_query}'..."):
+            studies = search_pubmed_conclusions(combined_query, n=max_results)
             
             if not studies:
-                st.warning("No studies found. Try another query.")
+                st.warning("No studies found. Try adjusting your terms.")
             else:
-                summaries = summarize_conclusions(studies, query)
+                summaries = summarize_conclusions(studies, combined_query)
                 for s in summaries:
                     st.markdown(s)
                     st.divider()
 
-# Footer
-st.caption("Disclaimer: This tool provides summaries of research for informational purposes only. Always consult a medical professional.")
+st.caption("Disclaimer: This tool provides summaries of research for informational purposes only.")
