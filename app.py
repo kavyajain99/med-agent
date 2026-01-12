@@ -73,9 +73,10 @@ if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not set in environment")
 
 # LangChain imports
-from langchain_core.prompts.prompt import PromptTemplate
-from langchain_core.chains.llm import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.chains import LLMChain
 from langchain_openai import ChatOpenAI
+import os
 
 # Your own modules
 # from pubmed_search import search_pubmed  # Uncomment if using
