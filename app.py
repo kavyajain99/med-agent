@@ -114,6 +114,7 @@ def summarize_conclusions(studies, query_term):
 # 5. Streamlit UI
 st.set_page_config(page_title="Health Research Agent", layout="wide")
 st.title("🩺 Health Research Agent")
+st.write("Enter a health topic and get PubMed research summaries in plain English.")
 
 # Two-column layout for Search
 col1, col2 = st.columns(2)
