@@ -74,7 +74,7 @@ if not OPENAI_API_KEY:
 
 # LangChain imports
 from langchain_core.prompts.prompt import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.chains.llm import LLMChain
 from langchain_openai import ChatOpenAI
 
 # Your own modules
